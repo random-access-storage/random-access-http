@@ -61,13 +61,13 @@ function headersInvalid (headers) {
 
 RandomAccessHTTP.prototype.write = function (offset, data, cb) {
   if (!cb) cb = noop
-  if (!this.buffer) return cb(new Error('Instance is closed'))
+  if (!this.writable) return cb(new Error('URL is not writable'))
   cb(new Error('Write Not Implemented'))
 }
 
 RandomAccessHTTP.prototype.read = function (offset, length, cb) {
-  if (!this.buffer) return cb(new Error('Instance is closed'))
-  if (offset + length > this.buffer.length) return cb(new Error('Could not satisfy length'))
+  if (!this.opened) return openAndRead(this, offset, length, cb)
+  if (!this.readable) return cb(new Error('File is not readable'))
   cb(new Error('Read Not Implemented'))
 }
 
@@ -78,3 +78,10 @@ RandomAccessHTTP.prototype.close = function (cb) {
 }
 
 function noop () {}
+
+function openAndRead (self, offset, length, cb) {
+  self.open(function (err) {
+    if (err) return cb(err)
+    self.read(offset, length, cb)
+  })
+}
