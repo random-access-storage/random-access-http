@@ -5,11 +5,11 @@ var url = require('url')
 var urlObj = url.parse('https://ia800309.us.archive.org/2/items/Popeye_Nearlyweds/Popeye_Nearlyweds_512kb.mp4')
 
 var options = Object.assign({}, urlObj, {
-    method: 'HEAD',
-    headers: {
-      Connection: 'keep-alive'
-    }
-  })
+  method: 'HEAD',
+  headers: {
+    Connection: 'keep-alive'
+  }
+})
 
 var client = {
   http: http,

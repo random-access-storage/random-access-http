@@ -13,8 +13,6 @@ function RandomAccessHTTP (fileUrl, opts) {
 
   events.EventEmitter.call(this)
 
-  var self = this
-
   this.url = fileUrl
   this.urlObj = url.parse(fileUrl)
   this.client = {
@@ -41,7 +39,7 @@ RandomAccessHTTP.prototype.open = function (cb) {
   var req = this.client.request(reqOpts, function (res) {
     if (res.statusCode !== 200) return cb(new Error('Bad response: ' + res.statusCode))
     if (headersInvalid(res.headers)) {
-      return cb(new Error('Source doesn\' support \'accept-ranges\''))
+      return cb(new Error("Source doesn' support 'accept-ranges'"))
     }
     self.opened = true
     if (res.headers['content-length']) self.length = res.headers['content-length']
