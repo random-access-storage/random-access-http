@@ -35,7 +35,6 @@ RandomAccessHTTP.prototype.open = function (cb) {
       Connection: 'keep-alive'
     }
   })
-  this.reqOpts = reqOpts
   var req = this.client.request(reqOpts, function (res) {
     if (res.statusCode !== 200) return cb(new Error('Bad response: ' + res.statusCode))
     if (headersInvalid(res.headers)) {
@@ -70,9 +69,21 @@ RandomAccessHTTP.prototype.read = function (offset, length, cb) {
   if (!this.opened) return openAndRead(this, offset, length, cb)
   if (!this.readable) return cb(new Error('File is not readable'))
 
+  var self = this
   var buf = Buffer(length)
 
   if (!length) return cb(null, buf)
+  var reqOpts = xtend(this.urlObj, {
+    method: 'HEAD',
+    headers: {
+      Connection: 'keep-alive',
+      'Accept-Ranges': 'bytes'
+    }
+  })
+
+  function onres () {
+    // todo
+  }
 }
 
 RandomAccessHTTP.prototype.close = function (cb) {
