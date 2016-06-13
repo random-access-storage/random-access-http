@@ -5,18 +5,18 @@ var https = require('https')
 var url = require('url')
 var xtend = require('xtend')
 
-module.exports = RandomAccessMemory
+module.exports = RandomAccessHTTP
 
-function RandomAccessHTTP (url, opts) {
-  if (!(this instanceof RandomAccessHTTP)) return new RandomAccessHTTP(url, opts)
+function RandomAccessHTTP (fileUrl, opts) {
+  if (!(this instanceof RandomAccessHTTP)) return new RandomAccessHTTP(fileUrl, opts)
   if (!opts) opts = {}
 
   events.EventEmitter.call(this)
 
   var self = this
 
-  this.url = url
-  this.urlObj = url.parse(url)
+  this.url = fileUrl
+  this.urlObj = url.parse(fileUrl)
   this.client = {
     http: http,
     https: https
@@ -27,7 +27,7 @@ function RandomAccessHTTP (url, opts) {
   this.opened = false
 }
 
-inherits(RandomAccessMemory, events.EventEmitter)
+inherits(RandomAccessHTTP, events.EventEmitter)
 
 RandomAccessHTTP.prototype.open = function (cb) {
   var self = this
@@ -38,7 +38,7 @@ RandomAccessHTTP.prototype.open = function (cb) {
     }
   })
   this.reqOpts = reqOpts
-  this.client.request(reqOpts, function (res) {
+  var req = this.client.request(reqOpts, function (res) {
     if (res.statusCode !== 200) return cb(new Error('Bad response: ' + res.statusCode))
     if (headersInvalid(res.headers)) {
       return cb(new Error('Source doesn\' support \'accept-ranges\''))
@@ -48,6 +48,12 @@ RandomAccessHTTP.prototype.open = function (cb) {
     self.emit('open')
     cb()
   })
+
+  req.on('error', (e) => {
+    return cb(new Error(`problem with request: ${e.message}`))
+  })
+
+  req.end()
 }
 
 function headersInvalid (headers) {
@@ -68,7 +74,9 @@ RandomAccessHTTP.prototype.read = function (offset, length, cb) {
 }
 
 RandomAccessHTTP.prototype.close = function (cb) {
-  cb(new Error('Close Not Implemented'))
+  this.opened = false
+  this.emit('close')
+  cb(null)
 }
 
 function noop () {}
