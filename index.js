@@ -59,8 +59,9 @@ function headersInvalid (headers) {
   if (headers['accept-ranges'] !== 'bytes') return true
 }
 
-RandomAccessHTTP.prototype.write = function (offset, data, cb) {
+RandomAccessHTTP.prototype.write = function (offset, buf, cb) {
   if (!cb) cb = noop
+  if (!this.opened) return openAndWrite(this, offset, buf, cb)
   if (!this.writable) return cb(new Error('URL is not writable'))
   cb(new Error('Write Not Implemented'))
 }
@@ -68,7 +69,10 @@ RandomAccessHTTP.prototype.write = function (offset, data, cb) {
 RandomAccessHTTP.prototype.read = function (offset, length, cb) {
   if (!this.opened) return openAndRead(this, offset, length, cb)
   if (!this.readable) return cb(new Error('File is not readable'))
-  cb(new Error('Read Not Implemented'))
+
+  var buf = Buffer(length)
+
+  if (!length) return cb(null, buf)
 }
 
 RandomAccessHTTP.prototype.close = function (cb) {
@@ -83,5 +87,12 @@ function openAndRead (self, offset, length, cb) {
   self.open(function (err) {
     if (err) return cb(err)
     self.read(offset, length, cb)
+  })
+}
+
+function openAndWrite (self, offset, buf, cb) {
+  self.open(function (err) {
+    if (err) return cb(err)
+    self.write(offset, buf, cb)
   })
 }
