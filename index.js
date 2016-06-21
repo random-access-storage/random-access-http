@@ -32,11 +32,11 @@ inherits(RandomAccessHTTP, events.EventEmitter)
 
 RandomAccessHTTP.prototype.open = function (cb) {
   var self = this
+
+  this.keepAliveAgent = new this.client.Agent({ keepAlive: true })
   var reqOpts = xtend(this.urlObj, {
     method: 'HEAD',
-    headers: {
-      Connection: 'keep-alive'
-    }
+    agent: this.keepAliveAgent
   })
   var req = this.client.request(reqOpts, onres)
 
@@ -76,14 +76,13 @@ RandomAccessHTTP.prototype.read = function (offset, length, cb) {
 
   var self = this
 
-  var buf = Buffer(length)
-
-  if (!length) return cb(null, buf)
+  var range = `${offset}-${offset + length - 1}`
   var reqOpts = xtend(this.urlObj, {
-    method: 'HEAD',
+    method: 'GET',
+    agent: this.keepAliveAgent,
     headers: {
-      Connection: 'keep-alive',
-      Range: `bytes=${offset}-${offset + length}`
+      Accept: '*/*',
+      Range: `bytes=${range}`
     }
   })
 
@@ -96,14 +95,14 @@ RandomAccessHTTP.prototype.read = function (offset, length, cb) {
   req.end()
 
   function onres (res) {
-    if (res.statusCode !== 206) return cb(new Error('Bad response: ' + res.statusCode))
     if (!res.headers['content-range']) return cb(new Error('Server did not return a byte range'))
-    var expectedRange = `bytes ${offset}-${offset + length}/${self.length}`
+    if (res.statusCode !== 206) return cb(new Error('Bad response: ' + res.statusCode))
+    var expectedRange = `bytes ${range}/${self.length}`
     if (res.headers['content-range'] !== expectedRange) return cb(new Error('Server returned unexpected range: ' + res.headers['content-range']))
-    var limiter = limitStream(length)
     var concatStream = concat(onBuf)
+    var limitter = limitStream(length + 1)
 
-    pump(res, limiter, concatStream, function (err) {
+    pump(res, limitter, concatStream, function (err) {
       if (err) return cb(new Error(`problem while reading stream: ${err}`))
     })
   }
@@ -128,6 +127,7 @@ RandomAccessHTTP.prototype.read = function (offset, length, cb) {
 
 RandomAccessHTTP.prototype.close = function (cb) {
   this.opened = false
+  this.keepAliveAgent.destroy()
   this.emit('close')
   cb(null)
 }
