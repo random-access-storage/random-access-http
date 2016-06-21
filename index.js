@@ -99,8 +99,9 @@ RandomAccessHTTP.prototype.read = function (offset, length, cb) {
     if (res.statusCode !== 206) return cb(new Error('Bad response: ' + res.statusCode))
     var expectedRange = `bytes ${range}/${self.length}`
     if (res.headers['content-range'] !== expectedRange) return cb(new Error('Server returned unexpected range: ' + res.headers['content-range']))
+    if (offset + length > self.length) return cb(new Error('Could not satisfy length'))
     var concatStream = concat(onBuf)
-    var limiter = limitStream(length + 1)
+    var limiter = limitStream(length + 1) // blow up if we get more data back than needed
 
     pump(res, limiter, concatStream, function (err) {
       if (err) return cb(new Error(`problem while reading stream: ${err}`))
