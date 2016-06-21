@@ -72,11 +72,11 @@ RandomAccessHTTP.prototype.write = function (offset, buf, cb) {
 
 RandomAccessHTTP.prototype.read = function (offset, length, cb) {
   if (!this.opened) return openAndRead(this, offset, length, cb)
-  if (!this.readable) return cb(new Error('File is not readable'))
+  if (!this.readable) return cb(new Error('URL is not readable'))
 
   var self = this
 
-  var range = `${offset}-${offset + length - 1}`
+  var range = `${offset}-${offset + length - 1}` // 0 index'd
   var reqOpts = xtend(this.urlObj, {
     method: 'GET',
     agent: this.keepAliveAgent,
@@ -100,9 +100,9 @@ RandomAccessHTTP.prototype.read = function (offset, length, cb) {
     var expectedRange = `bytes ${range}/${self.length}`
     if (res.headers['content-range'] !== expectedRange) return cb(new Error('Server returned unexpected range: ' + res.headers['content-range']))
     var concatStream = concat(onBuf)
-    var limitter = limitStream(length + 1)
+    var limiter = limitStream(length + 1)
 
-    pump(res, limitter, concatStream, function (err) {
+    pump(res, limiter, concatStream, function (err) {
       if (err) return cb(new Error(`problem while reading stream: ${err}`))
     })
   }

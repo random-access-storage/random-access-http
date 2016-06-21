@@ -71,16 +71,3 @@ tape('read from http flickr', function (t) {
     })
   })
 })
-
-tape('read from http soundcloud', function (t) {
-  t.plan(3)
-  var popeye = rahttp('http://ec-media.sndcdn.com/n3XThRUZN9E3?f10880d39085a94a0418a7ef61b03d5275edf83695e0cd6a5a31b904eeb57c5c37df72c67f624eac5cc7b9148a7732949a7077380d09e4681abff62837')
-  var length = 10
-  popeye.read(30, 10, function (err, buf) {
-    t.error(err, 'url read without error')
-    t.equal(buf.length, length)
-    popeye.close(function (err) {
-      t.error(err, 'url closed without error')
-    })
-  })
-})
