@@ -4,6 +4,9 @@ var http = require('http')
 var https = require('https')
 var url = require('url')
 var xtend = require('xtend')
+var concat = require('concat-stream')
+var pump = require('pump')
+var limitStream = require('size-limit-stream')
 
 module.exports = RandomAccessHTTP
 
@@ -35,16 +38,18 @@ RandomAccessHTTP.prototype.open = function (cb) {
       Connection: 'keep-alive'
     }
   })
-  var req = this.client.request(reqOpts, function (res) {
+  var req = this.client.request(reqOpts, onres)
+
+  function onres (res) {
     if (res.statusCode !== 200) return cb(new Error('Bad response: ' + res.statusCode))
     if (headersInvalid(res.headers)) {
-      return cb(new Error("Source doesn' support 'accept-ranges'"))
+      return cb(new Error("Source doesn't support 'accept-ranges'"))
     }
     self.opened = true
     if (res.headers['content-length']) self.length = res.headers['content-length']
     self.emit('open')
     cb()
-  })
+  }
 
   req.on('error', (e) => {
     return cb(new Error(`problem with request: ${e.message}`))
@@ -70,6 +75,7 @@ RandomAccessHTTP.prototype.read = function (offset, length, cb) {
   if (!this.readable) return cb(new Error('File is not readable'))
 
   var self = this
+
   var buf = Buffer(length)
 
   if (!length) return cb(null, buf)
@@ -77,14 +83,48 @@ RandomAccessHTTP.prototype.read = function (offset, length, cb) {
     method: 'HEAD',
     headers: {
       Connection: 'keep-alive',
-      'Accept-Ranges': 'bytes'
+      Range: `bytes=${offset}-${offset + length}`
     }
   })
 
-  function onres () {
-    // todo
+  var req = this.client.request(reqOpts, onres)
+
+  req.on('error', (e) => {
+    return cb(new Error(`problem with read request: ${e.message}`))
+  })
+
+  req.end()
+
+  function onres (res) {
+    if (res.statusCode !== 206) return cb(new Error('Bad response: ' + res.statusCode))
+    if (!res.headers['content-range']) return cb(new Error('Server did not return a byte range'))
+    var expectedRange = `bytes ${offset}-${offset + length}/${self.length}`
+    if (res.headers['content-range'] !== expectedRange) return cb(new Error('Server returned unexpected range: ' + res.headers['content-range']))
+    var limiter = limitStream(length)
+    var concatStream = concat(onBuf)
+
+    pump(res, limiter, concatStream, function (err) {
+      if (err) return cb(new Error(`problem while reading stream: ${err}`))
+    })
+  }
+
+  function onBuf (buf) {
+    return cb(null, buf)
   }
 }
+
+// function parseRangeHeader (rangeHeader) {
+//   var range = {}
+//   var byteRangeArr = rangeHeader.split(' ')
+//   range.unit = byteRangeArr[0]
+//   var ranges = byteRangeArr[1].split('/')
+//   range.totalLength = ranges[1]
+//   var startStop = ranges[0].split('-')
+//   range.offset = startStop[0]
+//   range.end = startStop[1]
+//   range.length = range.end - range.offset
+//   return range
+// }
 
 RandomAccessHTTP.prototype.close = function (cb) {
   this.opened = false

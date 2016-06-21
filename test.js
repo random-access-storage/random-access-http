@@ -19,3 +19,14 @@ tape('open and close', function (t) {
     })
   })
 })
+
+tape('read 10 bytes', function (t) {
+  t.plan(2)
+  var popeye = rahttp(testUrl)
+  popeye.read(0, 10, function (err) {
+    t.error(err, 'url read without error')
+    popeye.close(function (err) {
+      t.error(err, 'url closed without error')
+    })
+  })
+})
