@@ -17,9 +17,9 @@ This module provides you random access to a file hosted over http so that it can
 ## Usage
 
 ```js
-var randomAccessHttp = require('random-access-http')
+var randomAccessHTTP = require('random-access-http')
 
-var file = randomAccessHttp('http://example.com/somefile.mp4')
+var file = randomAccessHTTP('http://example.com/somefile.mp4')
 
 // Read 10 bytes at an offset of 5
 file.read(5, 10, function(err, buffer) {
@@ -34,7 +34,7 @@ file will use a keepalive agent to reduce the number http requests needed for th
 
 ## API
 
-#### `var file = randomAccessFile(url)`
+#### `var file = randomAccessHTTP(url)`
 
 Create a new 'file' that reads from the provided `url`.  The `url` can be either `http` or `https`.
 
