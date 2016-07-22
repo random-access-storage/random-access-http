@@ -25,7 +25,7 @@
     "mkdirp": "^0.5.1",
     "pump": "^1.0.1",
     "size-limit-stream": "^1.0.0",
-    "thunky": "^0.1.0",
+    "thunky": "^1.0.1",
     "xtend": "^4.0.1"
   },
   "devDependencies": {
