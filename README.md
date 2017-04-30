@@ -1,5 +1,7 @@
 # random-access-http
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/bcomnes/random-access-http.svg)](https://greenkeeper.io/)
+
 Continuous reading from a http(s) url using random offsets and lengths
 
 ```
