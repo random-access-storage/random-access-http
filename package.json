@@ -22,7 +22,7 @@
   "dependencies": {
     "concat-stream": "^1.5.1",
     "inherits": "^2.0.1",
-    "pump": "^1.0.1",
+    "pump": "^2.0.0",
     "size-limit-stream": "^1.0.0",
     "xtend": "^4.0.1"
   },
