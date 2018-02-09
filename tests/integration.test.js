@@ -1,4 +1,4 @@
-var rahttp = require('./')
+var rahttp = require('../')
 var tape = require('tape')
 
 var testUrl = 'https://ia800309.us.archive.org/2/items/Popeye_Nearlyweds/Popeye_Nearlyweds_512kb.mp4'
