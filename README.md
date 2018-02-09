@@ -6,7 +6,7 @@ Continuous reading from a http(s) url using random offsets and lengths
 npm install random-access-http
 ```
 
-[![Build Status](https://travis-ci.org/bcomnes/random-access-http.svg?branch=master)](https://travis-ci.org/bcomnes/random-access-http)
+[![Build Status](https://travis-ci.org/random-access-storage/random-access-http.svg?branch=master)](https://travis-ci.org/random-access-storage/random-access-http) [![Coverage Status](https://coveralls.io/repos/github/random-access-storage/random-access-http/badge.svg?branch=master)](https://coveralls.io/github/random-access-storage/random-access-http?branch=master)
 
 ## Why?
 
@@ -34,13 +34,25 @@ file will use a keepalive agent to reduce the number http requests needed for th
 
 ## API
 
-#### `var file = randomAccessHTTP(url)`
+#### `var file = randomAccessHTTP(url, [options])`
 
-Create a new 'file' that reads from the provided `url`.  The `url` can be either `http` or `https`.
+Create a new 'file' that reads from the provided `url`.  The `url` can be either `http`, `https` or a relative path if url is set in options.
+
+Options include:
+```js
+{
+  url: string // Optionsal. The base url if first argument is relative
+  verbose: boolean, // Optional. Default: false.
+  timeout: number, // Optional. Default: 60000
+  maxRedirects: number, // Optional. Default: 10
+  maxContentLength: number, // Optional. Default: 50MB
+}
+```
 
 #### `file.write(offset, buffer, [callback])`
 
-Not implemented!  Please let me know if you have opinions on how to implement this.
+**Not implemented!**  Please let us know if you have opinions on how to implement this.
+This will silently fail with no data being writen.
 
 #### `file.read(offset, length, callback)`
 

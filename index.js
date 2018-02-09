@@ -1,150 +1,102 @@
-var events = require('events')
-var inherits = require('inherits')
-var http = require('http')
-var https = require('https')
-var url = require('url')
-var xtend = require('xtend')
-var concat = require('concat-stream')
-var pump = require('pump')
-var limitStream = require('size-limit-stream')
+var axios = require('axios')
+var randomAccess = require('random-access-storage')
+var logger = require('./lib/logger')
+var isNode = require('./lib/is-node')
+var validUrl = require('./lib/valid-url')
 
-module.exports = RandomAccessHTTP
-
-function RandomAccessHTTP (fileUrl, opts) {
-  if (!(this instanceof RandomAccessHTTP)) return new RandomAccessHTTP(fileUrl, opts)
-  if (!opts) opts = {}
-
-  events.EventEmitter.call(this)
-
-  this.url = fileUrl
-  this.urlObj = url.parse(fileUrl)
-  this.client = {
-    http: http,
-    https: https
-  }[this.urlObj.protocol.split(':')[0]]
-  this.readable = opts.readable !== false
-  this.writable = false
-  this.length = opts.length || 0
-  this.opened = false
+var defaultOptions = {
+  responseType: 'arraybuffer',
+  timeout: 60000,
+  maxRedirects: 10, // follow up to 10 HTTP 3xx redirects
+  maxContentLength: 50 * 1000 * 1000 // cap at 50MB,
 }
 
-inherits(RandomAccessHTTP, events.EventEmitter)
+var randomAccessHttp = function (filename, options) {
+  var url = options && options.url
+  if (!filename || (!validUrl(filename) && !validUrl(url))) {
+    throw new Error('Expect first argument to be a valid URL or a relative path, with url set in options')
+  }
+  var axiosConfig = Object.assign({}, defaultOptions)
+  if (isNode) {
+    var http = require('http')
+    var https = require('https')
+    // keepAlive pools and reuses TCP connections, so it's faster
+    axiosConfig.httpAgent = new http.Agent({ keepAlive: true })
+    axiosConfig.httpsAgent = new https.Agent({ keepAlive: true })
+  }
+  if (options) {
+    if (url) axiosConfig.baseURL = url
+    if (options.timeout) axiosConfig.timeout = options.timeout
+    if (options.maxRedirects) axiosConfig.maxRedirects = options.maxRedirects
+    if (options.maxContentLength) axiosConfig.maxContentLength = options.maxContentLength
+  }
+  var _axios = axios.create(axiosConfig)
+  var file = filename
+  var verbose = !!(options && options.verbose)
 
-RandomAccessHTTP.prototype.open = function (cb) {
-  var self = this
-
-  this.keepAliveAgent = new this.client.Agent({ keepAlive: true })
-  var reqOpts = xtend(this.urlObj, {
-    method: 'HEAD',
-    agent: this.keepAliveAgent
-  })
-  var req = this.client.request(reqOpts, onres)
-
-  function onres (res) {
-    if (res.statusCode !== 200) return cb(new Error('Bad response: ' + res.statusCode))
-    if (headersInvalid(res.headers)) {
-      return cb(new Error("Source doesn't support 'accept-ranges'"))
+  return randomAccess({
+    open: function (req) {
+      if (verbose) logger.log('Testing to see if server accepts range requests', url, file)
+      // should cache this
+      _axios.head(file)
+        .then((response) => {
+          if (verbose) logger.log('Received headers from server')
+          var accepts = response.headers['accept-ranges']
+          if (accepts && accepts.toLowerCase().indexOf('bytes') !== -1) {
+            if (response.headers['content-length']) this.length = response.headers['content-length']
+            return req.callback(null)
+          }
+          return req.callback(new Error('Accept-Ranges does not include "bytes"'))
+        })
+        .catch((err) => {
+          if (verbose) logger.log('Error opening', file, '-', err)
+          req.callback(err)
+        })
+    },
+    read: function (req) {
+      var range = `${req.offset}-${req.offset + req.size - 1}`
+      var headers = {
+        range: `bytes=${range}`
+      }
+      if (verbose) logger.log('Trying to read', file, headers.Range)
+      _axios.get(file, { headers: headers })
+        .then((response) => {
+          if (!response.headers['content-range']) throw new Error('Server did not return a byte range')
+          if (response.status !== 206) throw new Error('Bad response: ' + response.status)
+          var expectedRange = `bytes ${range}/${this.length}`
+          if (response.headers['content-range'] !== expectedRange) throw new Error('Server returned unexpected range: ' + response.headers['content-range'])
+          if (req.offset + req.size > this.length) throw new Error('Could not satisfy length')
+          if (verbose) logger.log('read', JSON.stringify(response.headers, null, 2))
+          req.callback(null, Buffer.from(response.data))
+        })
+        .catch((err) => {
+          if (verbose) {
+            logger.log('error', file, headers.Range)
+            logger.log(err, err.stack)
+          }
+          req.callback(err)
+        })
+    },
+    write: function (req) {
+      // This is a dummy write function - does not write, but fails silently
+      if (verbose) logger.log('trying to write', file, req.offset, req.data)
+      req.callback()
+    },
+    del: function (req) {
+      // This is a dummy del function - does not del, but fails silently
+      if (verbose) logger.log('trying to del', file, req.offset, req.size)
+      req.callback()
+    },
+    close: function (req) {
+      if (_axios.defaults.httpAgent) {
+        _axios.defaults.httpAgent.destroy()
+      }
+      if (_axios.defaults.httpsAgent) {
+        _axios.defaults.httpsAgent.destroy()
+      }
+      req.callback()
     }
-    self.opened = true
-    if (res.headers['content-length']) self.length = res.headers['content-length']
-    self.emit('open')
-    cb()
-  }
-
-  req.on('error', (e) => {
-    return cb(new Error(`problem with request: ${e.message}`))
-  })
-
-  req.end()
-}
-
-function headersInvalid (headers) {
-  if (!headers['accept-ranges']) return true
-  if (headers['accept-ranges'] !== 'bytes') return true
-}
-
-RandomAccessHTTP.prototype.write = function (offset, buf, cb) {
-  if (!cb) cb = noop
-  if (!this.opened) return openAndWrite(this, offset, buf, cb)
-  if (!this.writable) return cb(new Error('URL is not writable'))
-  cb(new Error('Write Not Implemented'))
-}
-
-RandomAccessHTTP.prototype.read = function (offset, length, cb) {
-  if (!this.opened) return openAndRead(this, offset, length, cb)
-  if (!this.readable) return cb(new Error('URL is not readable'))
-
-  var self = this
-
-  var range = `${offset}-${offset + length - 1}` // 0 index'd
-  var reqOpts = xtend(this.urlObj, {
-    method: 'GET',
-    agent: this.keepAliveAgent,
-    headers: {
-      Accept: '*/*',
-      Range: `bytes=${range}`
-    }
-  })
-
-  var req = this.client.request(reqOpts, onres)
-
-  req.on('error', (e) => {
-    return cb(new Error(`problem with read request: ${e.message}`))
-  })
-
-  req.end()
-
-  function onres (res) {
-    if (!res.headers['content-range']) return cb(new Error('Server did not return a byte range'))
-    if (res.statusCode !== 206) return cb(new Error('Bad response: ' + res.statusCode))
-    var expectedRange = `bytes ${range}/${self.length}`
-    if (res.headers['content-range'] !== expectedRange) return cb(new Error('Server returned unexpected range: ' + res.headers['content-range']))
-    if (offset + length > self.length) return cb(new Error('Could not satisfy length'))
-    var concatStream = concat(onBuf)
-    var limiter = limitStream(length + 1) // blow up if we get more data back than needed
-
-    pump(res, limiter, concatStream, function (err) {
-      if (err) return cb(new Error(`problem while reading stream: ${err}`))
-    })
-  }
-
-  function onBuf (buf) {
-    return cb(null, buf)
-  }
-}
-
-// function parseRangeHeader (rangeHeader) {
-//   var range = {}
-//   var byteRangeArr = rangeHeader.split(' ')
-//   range.unit = byteRangeArr[0]
-//   var ranges = byteRangeArr[1].split('/')
-//   range.totalLength = ranges[1]
-//   var startStop = ranges[0].split('-')
-//   range.offset = startStop[0]
-//   range.end = startStop[1]
-//   range.length = range.end - range.offset
-//   return range
-// }
-
-RandomAccessHTTP.prototype.close = function (cb) {
-  this.opened = false
-  this.keepAliveAgent.destroy()
-  this.emit('close')
-  cb(null)
-}
-
-function noop () {}
-
-function openAndRead (self, offset, length, cb) {
-  self.open(function (err) {
-    if (err) return cb(err)
-    self.read(offset, length, cb)
   })
 }
 
-function openAndWrite (self, offset, buf, cb) {
-  self.open(function (err) {
-    if (err) return cb(err)
-    self.write(offset, buf, cb)
-  })
-}
+module.exports = randomAccessHttp
