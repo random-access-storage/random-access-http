@@ -40,7 +40,6 @@ var randomAccessHttp = function (filename, options) {
       // should cache this
       _axios.head(file)
         .then((response) => {
-          console.log(_axios);
           if (verbose) logger.log('Received headers from server')
           var accepts = response.headers['accept-ranges']
           if (accepts && accepts.toLowerCase().indexOf('bytes') !== -1) {

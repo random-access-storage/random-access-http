@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "standard && tape tests/**.test.js",
-    "test-travis": "nyc tape tests/**.test.js | tap-spec",
+    "test-travis": "standard && nyc tape tests/**.test.js | tap-spec",
     "tdd": "tape-watch tests/**.test.js",
     "report-coverage": "nyc report --reporter=text-lcov | coveralls"
   },
