@@ -1,5 +1,21 @@
 var test = require('tape')
-var validUrl = require('../lib/valid-url')
+var {validUrl, prependUrlProtocol} = require('../lib/url')
+
+test('prependUrlProtocol assumes http without path', (t) => {
+  t.same(prependUrlProtocol('example.com'), 'http://example.com')
+  t.end()
+})
+
+test('prependUrlProtocol assumes http with path', (t) => {
+  t.same(prependUrlProtocol('example.com/foo/bar.html'), 'http://example.com/foo/bar.html')
+  t.end()
+})
+
+test('prependUrlProtocol doesn\'t change protocol if given', (t) => {
+  t.same(prependUrlProtocol('https://example.com/foo/bar.html'), 'https://example.com/foo/bar.html')
+  t.same(prependUrlProtocol('ftp://example.com/foo/bar.html'), 'ftp://example.com/foo/bar.html')
+  t.end()
+})
 
 test('validUrl returns false if url is not a string', (t) => {
   t.notOk(validUrl())

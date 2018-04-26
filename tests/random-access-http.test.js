@@ -135,8 +135,9 @@ test('raHttp.write does not throw error', (t) => {
   startServer(standardHandler, (err) => {
     t.error(err)
     var ra = raHttp('test-write', { url: 'http://localhost:3000' })
-    t.doesNotThrow(ra.write.bind(ra, 10, 'some-data'))
-    stopServer(t)
+    t.doesNotThrow(ra.write.bind(ra, 10, 'some-data', function () {
+      stopServer(t)
+    }))
   })
 })
 
@@ -163,8 +164,9 @@ test('raHttp.del does not throw error', (t) => {
   startServer(standardHandler, (err) => {
     t.error(err)
     var ra = raHttp('test-del', { url: 'http://localhost:3000' })
-    t.doesNotThrow(ra.del.bind(ra, 10, 100))
-    stopServer(t)
+    t.doesNotThrow(ra.del.bind(ra, 10, 100, function () {
+      stopServer(t)
+    }))
   })
 })
 
