@@ -3,6 +3,8 @@ var proxyquire = require('proxyquire').noPreserveCache()
 var sinon = require('sinon')
 var stoppable = require('stoppable')
 var http = require('http')
+var st = require('st')
+var path = require('path')
 var port = 3000
 
 var server
@@ -184,6 +186,29 @@ test('raHttp.del logs with options.verbose === true', (t) => {
       t.error(err)
       t.ok(stub.calledWith('trying to del', 'test-del', 10, 100))
       stopServer(t)
+    })
+  })
+})
+
+test('raHttp.read() on server that does not support ranges', (t) => {
+  var raHttp = require('../index.js')
+  var mount = st({
+    path: path.join(__dirname, '..')
+  })
+
+  var server = stoppable(http.createServer(function (req, res) {
+    mount(req, res)
+  }))
+
+  server.listen(port, function () {
+    var ra = raHttp('LICENSE', { url: 'http://localhost:3000', strict: false })
+    ra.read(10, 20, (err, data) => {
+      t.error(err)
+      t.ok(data instanceof Buffer)
+      t.same(data.length, 20)
+      server.stop(function () {
+        t.end()
+      })
     })
   })
 })

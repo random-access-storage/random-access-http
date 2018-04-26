@@ -10,7 +10,7 @@ npm install random-access-http
 
 ## Why?
 
-Peers in a distributed system tend to come and go over a short period of time in many common p2p scenarios, especially when you are giving away a file without incentivizing the swarm to seed the file for a long time.  There are also an abundance of free cloud hosts that let you host large files over http.
+Peers in a distributed system tend to come and go over a short period of time in many common p2p scenarios, especially when you are giving away a file without incentivizing the swarm to seed the file for a long time. There are also an abundance of free cloud hosts that let you host large files over http.
 
 This module provides you random access to a file hosted over http so that it can be used by a client in a distributed system (such as hypercore or hyperdrive) to acquire parts of the file for itself and the other peers in the swarm.
 
@@ -30,13 +30,13 @@ file.read(5, 10, function(err, buffer) {
 })
 ```
 
-file will use a keepalive agent to reduce the number http requests needed for the session.  When you are done you should call `file.close()` to destroy the agent.
+file will use a keepalive agent to reduce the number http requests needed for the session. When you are done you should call `file.close()` to destroy the agent.
 
 ## API
 
 #### `var file = randomAccessHTTP(url, [options])`
 
-Create a new 'file' that reads from the provided `url`.  The `url` can be either `http`, `https` or a relative path if url is set in options.
+Create a new 'file' that reads from the provided `url`. The `url` can be either `http`, `https` or a relative path if url is set in options.
 
 Options include:
 ```js
@@ -46,17 +46,20 @@ Options include:
   timeout: number, // Optional. Default: 60000
   maxRedirects: number, // Optional. Default: 10
   maxContentLength: number, // Optional. Default: 50MB
+  strict: true, // When false, will accept non-ranged response (it will slice the response to the requested offset/length)
 }
 ```
 
 #### `file.write(offset, buffer, [callback])`
 
-**Not implemented!**  Please let us know if you have opinions on how to implement this.
+**Not implemented!** Please let us know if you have opinions on how to implement this.
 This will silently fail with no data being writen.
 
 #### `file.read(offset, length, callback)`
 
-Read a buffer at a specific offset. Callback is called with the buffer read.  Currently this will fail if the server returns byte ranges different than what is requested.  PRs welcome to expand the flexibility of this method to allow for servers that return fat ranges.
+Read a buffer at a specific offset. Callback is called with the buffer read.
+By default, this will fail if the server returns byte ranges different than what is requested.
+If you want to support uncooperative static file servers (that doesn't use ranges), pass the `strict` with a falsy value.
 
 #### `file.close([callback])`
 
