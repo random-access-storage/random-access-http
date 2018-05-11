@@ -21,6 +21,8 @@ var randomAccessHttp = function (filename, options) {
     throw new Error('Expect first argument to be a valid URL or a relative path, with url set in options')
   }
 
+  // If this is falsy, raHttp will read non-ranged data
+  var strict = true
   var axiosConfig = Object.assign({}, defaultOptions)
   if (isNode) {
     var http = require('http')
@@ -34,6 +36,7 @@ var randomAccessHttp = function (filename, options) {
     if (options.timeout) axiosConfig.timeout = options.timeout
     if (options.maxRedirects) axiosConfig.maxRedirects = options.maxRedirects
     if (options.maxContentLength) axiosConfig.maxContentLength = options.maxContentLength
+    if (options.strict !== undefined) strict = options.strict
   }
   var _axios = axios.create(axiosConfig)
   var file = filename
@@ -51,7 +54,11 @@ var randomAccessHttp = function (filename, options) {
             if (response.headers['content-length']) this.length = response.headers['content-length']
             return req.callback(null)
           }
-          return req.callback(new Error('Accept-Ranges does not include "bytes"'))
+
+          if (strict) return req.callback(new Error('Accept-Ranges does not include "bytes"'))
+
+          logger.warn('Accept-Ranges does not include "bytes" or may not be supported.')
+          return req.callback(null)
         })
         .catch((err) => {
           if (verbose) logger.log('Error opening', file, '-', err)
@@ -66,7 +73,13 @@ var randomAccessHttp = function (filename, options) {
       if (verbose) logger.log('Trying to read', file, headers.Range)
       _axios.get(file, { headers: headers })
         .then((response) => {
-          if (!response.headers['content-range']) throw new Error('Server did not return a byte range')
+          if (!response.headers['content-range']) {
+            if (strict) throw new Error('No content range. Use the "strict" option to bypass.')
+            if (req.offset + req.size > response.data.length) throw new Error('Could not satisfy length')
+            logger.warn('Reading data without content-range.')
+            return req.callback(null, Buffer.from(response.data.slice(req.offset, req.offset + req.size)))
+          }
+
           if (response.status !== 206) throw new Error('Bad response: ' + response.status)
           var expectedRange = `bytes ${range}/${this.length}`
           if (response.headers['content-range'] !== expectedRange) throw new Error('Server returned unexpected range: ' + response.headers['content-range'])
