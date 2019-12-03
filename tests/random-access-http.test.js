@@ -54,10 +54,10 @@ test('it uses node http/s agent setting with keepAlive when run in node', (t) =>
   var httpStub = sinon.stub()
   var httpsStub = sinon.stub()
   var raHttp = proxyquire('../index.js', {
-    'http': {
+    http: {
       Agent: httpStub
     },
-    'https': {
+    https: {
       Agent: httpsStub
     }
   })
@@ -74,10 +74,10 @@ test('it does not use node http/s when in browser', (t) => {
   var httpsStub = sinon.stub()
   var raHttp = proxyquire('../index.js', {
     './lib/is-node': false,
-    'http': {
+    http: {
       Agent: httpStub
     },
-    'https': {
+    https: {
       Agent: httpsStub
     }
   })

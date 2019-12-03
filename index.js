@@ -2,7 +2,7 @@ var axios = require('axios')
 var randomAccess = require('random-access-storage')
 var logger = require('./lib/logger')
 var isNode = require('./lib/is-node')
-var {validUrl, prependUrlProtocol} = require('./lib/url')
+var { validUrl, prependUrlProtocol } = require('./lib/url')
 
 var defaultOptions = {
   responseType: 'arraybuffer',

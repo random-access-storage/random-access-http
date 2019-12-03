@@ -1,5 +1,5 @@
 var test = require('tape')
-var {validUrl, prependUrlProtocol} = require('../lib/url')
+var { validUrl, prependUrlProtocol } = require('../lib/url')
 
 test('prependUrlProtocol assumes http without path', (t) => {
   t.same(prependUrlProtocol('example.com'), 'http://example.com')
