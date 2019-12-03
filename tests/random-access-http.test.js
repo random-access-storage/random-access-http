@@ -93,10 +93,10 @@ test('raHttp.open() callback returns error if server does not support range requ
     res.end()
   }
   startServer(withoutRangeSupportHandler, (err) => {
-    t.error(err)
+    t.error(err, 'server started without error')
     var ra = raHttp('without-range-support', { url: 'http://localhost:3000' })
     ra.read(0, 10, (err, res) => {
-      t.ok(err.message.search(/Not opened/) !== -1)
+      t.ok(err.message.search(/Accept-Ranges does not include/) !== -1, 'error contains "Accept-Ranges does not include"')
       stopServer(t)
     })
   })
@@ -109,10 +109,10 @@ test('raHttp.open() callback returns error if call to axios.head() fails', (t) =
     res.end()
   }
   startServer(notFoundHandler, (err) => {
-    t.error(err)
+    t.error(err, 'server started without error')
     var ra = raHttp('not-found', { url: 'http://localhost:3000' })
     ra.read(0, 10, (err, res) => {
-      t.ok(err.message.search(/Not opened/) !== -1)
+      t.ok(err.message.search(/Request failed with status code 404/) !== -1, 'error contains "Request failed with status code 404"')
       stopServer(t)
     })
   })

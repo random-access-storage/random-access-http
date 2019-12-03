@@ -46,9 +46,9 @@ tape('read 100 bytes at an offset of 2000', function (t) {
   })
 })
 
-tape('read from https flickr', function (t) {
+tape('read from https wikipedia', function (t) {
   t.plan(3)
-  var popeye = rahttp('https://c1.staticflickr.com/3/2892/12196828014_eb4ffac150_o.jpg')
+  var popeye = rahttp('https://upload.wikimedia.org/wikipedia/en/7/7d/Lenna_%28test_image%29.png')
   var length = 10
   popeye.read(0, 10, function (err, buf) {
     t.error(err, 'url read without error')
@@ -59,9 +59,9 @@ tape('read from https flickr', function (t) {
   })
 })
 
-tape('read from http flickr', function (t) {
+tape('read from http archive.org', function (t) {
   t.plan(3)
-  var popeye = rahttp('http://c1.staticflickr.com/3/2892/12196828014_eb4ffac150_o.jpg')
+  var popeye = rahttp('http://ia801009.us.archive.org/5/items/mbid-e77048de-139b-3fd3-977b-d86993e0e1b2/mbid-e77048de-139b-3fd3-977b-d86993e0e1b2-12826202809.jpg')
   var length = 10
   popeye.read(30, 10, function (err, buf) {
     t.error(err, 'url read without error')
